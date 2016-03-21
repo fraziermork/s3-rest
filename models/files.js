@@ -7,8 +7,8 @@ module.exports = function(mongoose){
   let fileschema = new mongoose.Schema({
     filename: String,
     owner: [{type: mongoose.Schema.Types.ObjectId, ref: 'Users'}],
-    s3url: String,
-    date: Date
+    s3Url: String,
+    modifiedDate: {type: Date, default: Date.now}
   });
   return mongoose.model('Files', fileschema);
 };

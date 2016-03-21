@@ -4,11 +4,10 @@
 
 module.exports = function(mongoose){
   let userschema = new mongoose.Schema({
-    username: String,
-    password: String,
+    username: {type: String, required: true, unique: true},
+    password: {type: String, required: true},
     files: [{type: mongoose.Schema.Types.ObjectId, ref: 'Files'}],
-    accountCreationDate: Date, 
-    accountLastAccessedDate: Date
+    accountCreationDate: {type: Date, default: Date.now}
   });
   return mongoose.model('Users', userschema);
 };

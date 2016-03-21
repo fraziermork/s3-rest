@@ -3,7 +3,7 @@ var gulp = require('gulp');
 var mocha = require('gulp-mocha');
 var eslint = require('gulp-eslint');
 
-var lintPaths = [__dirname + '/lib/*.js', __dirname + '/test/*.js', __dirname + '/server.js'];
+var lintPaths = [__dirname + '/lib/*.js', __dirname + '/lib/aws/*.js', __dirname + '/routes/*.js', __dirname + '/models/*.js', __dirname + '/test/*.js', __dirname + '/server.js'];
 
 gulp.task('eslint', () => {
   gulp.src(lintPaths)

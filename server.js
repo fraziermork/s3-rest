@@ -9,7 +9,6 @@ let usersRouter = require(__dirname +'/routes/users.js')(express.Router());
 let DB_PORT = process.env.MONGOLAB_URI || 'mongodb:localhost/db';
 mongoose.connect(DB_PORT);
 let db = mongoose.connection;
-
 db.on('error', (err) => {
   console.log('error connecting with MongoDB, error is', err);
 });
