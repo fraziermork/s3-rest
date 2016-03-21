@@ -10,10 +10,12 @@ module.exports = function(router, s3Manager){
     console.log('GET request made to /users');
     User.find({}).select('username accountCreationDate').exec()
     .then((users) => {
+      console.log('finished finder users');
       response.status(200).json(users);
     })
     .catch((err) => {
-      response.status(500).end('500 Error finding users: ', err);
+      console.log('500 Error finding users: ', err);
+      response.status(500).end('500 Error finding users.');
     });
   })
   .post((request, response) => {
@@ -25,13 +27,15 @@ module.exports = function(router, s3Manager){
       });
       newUser.save().exec()
       .then((newDBUser) => {
+        console.log('finished posting a new user');
         response.status(200).end(newDBUser.name + ' successfully created.');
       })
       .catch((err) => {
-        response.status(500).end('500 Error saving user: ', err);
+        console.log('500 Error saving user: ', err);
+        response.status(500).end('500 Error saving user.');
       });
-      
     } else {
+      console.log('Request needs a password and a username');
       return response.status(400).end('400 Bad request');
     }
   });
@@ -41,6 +45,7 @@ module.exports = function(router, s3Manager){
     console.log('GET request made to /users/:user');
     User.where({username: request.params.user}).populate('files').exec()
     .then((thatUser) => {
+      console.log('finished finding the desired user');
       console.log('thatUser is');
       console.dir(thatUser);
       response.status(200).json(thatUser);
@@ -51,25 +56,30 @@ module.exports = function(router, s3Manager){
     });
   })
   .put((request, response) => {  //need to figure out a way to check whether that user's password was entered correctly
-    console.log('POST request made to /users/:user');
+    console.log('PUT request made to /users/:user');
     User.where({username: request.params.user})
     .update((function(){
+      console.log('going to update the user');
       let returnObj = {
         '$set' = {},
         '$push' = {}
       };
-      if(request.body.username){
-        returnObj.$set.username = request.body.username;
+      if(request.body.newUsername){
+        console.log('request to change the username');
+        returnObj.$set.username = request.body.newUsername;
       }
-      if (request.body.password){
-        returnObj.$set.password = request.body.password;
+      if (request.body.newPassword){
+        console.log('request to change the password');
+        returnObj.$set.password = request.body.newPassword;
       }
       if (request.body.files){
+        console.log('request to give ownership of a file');
         returnObj.$push.files = {$each: request.body.files};
       }    
       return returnObj;
     })()).exec()
     .then((thatUser) => {
+      console.log('finished updating the user');
       console.log('thatUser is');
       console.dir(thatUser);
       response.status(200).json(thatUser);
@@ -84,9 +94,9 @@ module.exports = function(router, s3Manager){
     User.where({username: request.params.user})
     .findOneAndRemove().exec()
     .then((thatUser) => {
+      console.log('Going to delete ' + thatUser.name + ' from S3.');
       console.log('thatUser was');
       console.dir(thatUser);
-      console.log('Going to delete ' + thatUser.name + ' from S3.');
       return s3Manager.deleteFilesFromArray(thatUser.files);
     })
     .then((data) => {
@@ -108,8 +118,9 @@ module.exports = function(router, s3Manager){
     console.log('GET request made to /users/:user/files');
     User.where({username: request.params.user}).select('files')
     .populate('files').exec()
-    .then((files) => {
-      response.status(200).json(files);
+    .then((thatDBUser) => {
+      console.log('found the files for the user ' + request.params.user);
+      response.status(200).json(thatDBUser.files);
     })
     .catch((err) => {
       console.log('Error finding files for ' + request.params.user + '. Error was, ', err);
@@ -120,16 +131,20 @@ module.exports = function(router, s3Manager){
     console.log('POST request made to /users/:user/files');
     var fileDBId;
     if(request.body.filename && request.body.content){
+      console.log('Request had a filename and content');
+      console.log('going to save the file to mongo');
       let newFile = new File({
         owner: [request.params.user],
         filename: request.body.filename
       });
       newFile.save()
       .then((savedDBFile) => {
+        console.log('going to save the file to S3');
         fileDBId = savedDBFile._id;
-        return s3Manager.saveContent(savedDBFile, request.body.content);
+        return s3Manager.saveContent(savedDBFile._id, request.body.content);
       })
       .then((generatedS3Url) => {
+        console.log('going to update the user and file with the s3url and the fileid');
         let fileUpdatePromise = File.findOneAndUpdate({_id: fileDBId}, {$set: {s3Url: generatedS3Url}}).exec();
         let userUpdatePromise = User.findOneAndUpdate({username: request.body.username}, {$push: {files: fileDBId}}).exec();
         return Promise.all([fileUpdatePromise, userUpdatePromise])
@@ -144,7 +159,7 @@ module.exports = function(router, s3Manager){
         response.status(500).end('Error saving file ' + request.body.filename + '.');
       });
     } else {
-      console.log('Invalid post');
+      console.log('Invalid post lacking filename or content');
       response.status(400).end('Invalid post');
     }
   });
