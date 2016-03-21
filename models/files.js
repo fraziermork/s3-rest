@@ -6,7 +6,7 @@
 module.exports = function(mongoose){
   let fileschema = new mongoose.Schema({
     filename: String,
-    owner: [{type: mongoose.Schema.Types.ObjectId, ref: 'Users'}],
+    owner: String, //[{type: mongoose.Schema.Types.ObjectId, ref: 'Users'}],
     s3Url: String,
     modifiedDate: {type: Date, default: Date.now}
   });

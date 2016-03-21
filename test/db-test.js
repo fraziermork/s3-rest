@@ -1,65 +1,199 @@
 'use strict';
 var mockgoose = require('mockgoose');
 var mongoose = require('mongoose');
+mockgoose(mongoose);
+
 var chai = require('chai');
 var chaiHttp = require('chai-http');
 chai.use(chaiHttp);
 var expect = chai.expect;
 var request = chai.request;
 
+require(__dirname + '/../server.js');
+let File = require(__dirname + '/models/files.js');
+let User = require(__dirname + '/models.users.js');
+
 describe('/users', () => {
-  describe('/', () => {
-    describe('POST to /users', () => {
-      
+  beforeEach((done) => {
+    console.log('mongoose.isMocked() returns ' + mongoose.isMocked());
+    mockgoose.reset(() => {
+      let fdr = new User({
+        username: 'dime',
+        password: 'letsMakeANewDeal'
+      });
+      let washington = new User({
+        username: 'quarter',
+        password: 'myTeethHurt'
+      });
+      let abe = new User({
+        username: 'penny',
+        password: 'honestAbe'
+      });
+      Promise.all([fdr.save.exec(), washington.save.exec(), abe.save.exec()])
+      .then(() => {
+        done();
+      })
+      .catch((err) => {
+        console.log('Error saving users: ', err);
+      });
     });
+  });
+  describe('/', () => {
     describe('GET to /users', () => {
-      
+      it('should let you see all users', (done) => {
+        request('localhost:3000').get('/users').end((err, response) => {
+          expect(err).to.equal(null);
+          expect(response.status).to.equal(200);
+          console.log(response.body);
+          // expect(response.body).
+          done();
+        });
+      });
+    });
+    describe('POST to /users', () => {
+      it('should let you post a new user', (done) => {
+        request('localhost:3000').post('/users').send({
+          username: 'nickel',
+          password: 'lifeLibertyHappiness'
+        }).end((err, response) => {
+          expect(err).to.equal(null);
+          expect(response.status).to.equal(200);
+          expect(response.body.username).to.equal('nickel');
+          expect(response.body.password).to.equal('lifeLibertyHappiness');
+          done();
+        });
+      });
+      it('should have saved a new user', (done) => {
+        User.findOne({username: 'nickel'}, (err, user) => {
+          expect(err).to.equal(null);
+          expect(user.password).to.equal('lifeLibertyHappiness');
+          done();
+        });
+      });
     });
   });
   
   describe('/users/:user', () => {
     describe('GET to /users/:user', () => {
-      
+      it('should let you request a particular user', (done) => {
+        request('localhost:3000').get('/users/dime').end((err, response) => {
+          expect(err).to.equal(null);
+          expect(response.status).to.equal(200);
+          expect(response.body.username).to.equal('penny');
+          expect(response.body.password).to.equal('honestAbe');
+          expect(response.body.accountCreationDate instanceof Date).to.equal(true);
+          done();
+        });
+      });
     });
     describe('PUT to /users/:user', () => {
-      
+      it('should let you make changes to a user', (done) => {
+        request('localhost:3000').put('/users/quarter').send({
+          username: 'dollaBill',
+          password: 'cherryTree'
+        }).end((err, response) => {
+          expect(err).to.equal(null);
+          expect(response.status).to.equal(200);
+          console.log('response.body is');
+          console.dir(response.body);
+          // expect(response.body.username)
+          done();
+        });
+      });
+      it('should have successfully updated a user', (done) => {
+        User.findOne({username: 'dollaBill'}, (err, user) => {
+          expect(err).to.equal(null);
+          expect(user.password).to.equal('cherryTree');
+          done();
+        });
+      });
     });
     describe('DELETE to /users/:user', () => {
-      
+      it('should let you delete a user', (done) => {
+        request('localhost:3000').delete('/users/penny').end((err, response) => {
+          expect(err).to.equal(null);
+          expect(response.status).to.equal(200);
+          done();
+        });
+      });
+      it('should have deleted that user', (done) => {
+        User.find({username: 'dollaBill'}, (err, user) => {
+          expect(err).to.equal(null);
+          expect(user.length).to.equal(0);
+          done();
+        });
+      });
     });
   });
   
   describe('/users/:user/files', () => {
-    describe('GET to /users/:user/files', () => {
-      
-    });
     describe('POST to /users/:user/files', () => {
-      
+      var newFileId, fileOwnerName;
+      it('should let you post a file to a user', (done) => {
+        request('localhost:3000').post('/users/penny/files').send({
+          filename: 'Gettysburg address',
+          content: 'Four score and seven years ago...'
+        }).end((err, response) => {
+          expect(err).to.equal(null);
+          expect(response.status).to.equal(200);
+          done();
+        });
+      });
+      it('should have saved a new file', (done) => {
+        File.findOne({filename: 'Gettysburg address'}, (err, searchedFile) => {
+          expect(err).to.equal(null);
+          expect(searchedFile.s3Url.length).to.be.gt(0);
+          expect(searchedFile.owner.length).to.be.gt(0);
+          fileOwnerName = searchedFile.owner[0];
+          newFileId = searchedFile._id;
+          done();
+        });
+      });
+      it('should have updated the files entry of the owner', (done) => {
+        User.findOne({username: fileOwnerName})
+        .populate('files').exec((err, fileOwner) => {
+          expect(err).to.equal(null);
+          expect(fileOwner.files.length).to.be.gt(0);
+          done();
+        });
+      });
+    });
+    describe('GET to /users/:user/files', () => {
+      it('should populate correctly and let you grab the files belonging to a user', (done) => {
+        request('localhost:3000').get('/users/penny/files').end((err, response) => {
+          expect(err).to.eqaul(null);
+          expect(response.status).to.equal(200);
+          console.log('response.body is');
+          console.dir(response.body);
+          // expect(response.body)
+          done();
+        });
+      });
     });
   });
-  
-  describe('/users/:user/files/:file', () => {
-    describe('GET to /users/:user/files/:file', () => {
-      
-    });
-    describe('PUT to /users/:user/files/:file', () => {
-      
-    });
-    describe('DELETE to /users/:user/files/:file', () => {
-      
-    });
-  });
-});
-
-describe('/files', () => {
-  describe('GET to /files/:file', () => {
-    
-  });
-  describe('PUT to /files/:file', () => {
-    
-  });
-  describe('DELETE to /files/:file', () => {
-    
-  });
+//   
+//   describe('/users/:user/files/:file', () => {
+//     describe('GET to /users/:user/files/:file', () => {
+//       
+//     });
+//     describe('PUT to /users/:user/files/:file', () => {
+//       
+//     });
+//     describe('DELETE to /users/:user/files/:file', () => {
+//       
+//     });
+//   });
+// });
+// 
+// describe('/files', () => {
+//   describe('GET to /files/:file', () => {
+//     
+//   });
+//   describe('PUT to /files/:file', () => {
+//     
+//   });
+//   describe('DELETE to /files/:file', () => {
+//     
+//   });
   
 });

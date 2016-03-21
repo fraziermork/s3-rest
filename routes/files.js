@@ -27,15 +27,15 @@ module.exports = function(router, s3Manager){
     User.findOne({username: request.body.username})
     .populate('files').exec()
     .then((thatUser) => {//delete reference to file from user
-      console.log('Going to delete reference to file from user');
+      
       thatUserId = thatUser._id;
       fileToChange = thatUser.files.filter((current) => {
         return current.filename === request.params.file;
       })[0];
-      return User.findOneAndUpdate({_id: thatUserId}, {$pull: {files: fileToChange._id }}).exec();
-    }).then(() => { //delete old file from S3
-      console.log('going to delete file from S3');
-      return s3Manager.deleteFilesFromArray([fileToChange._id]); 
+      console.log('Going to delete reference to file from user');
+      let userUpdatePromise = User.findOneAndUpdate({_id: thatUserId}, {$pull: {files: fileToChange._id }}).exec();
+      let fileUpdatePromise = s3Manager.deleteFilesFromArray([fileToChange._id]); 
+      return Promise.all([userUpdatePromise, fileUpdatePromise]);
     })
     .then((data) => { //create a new file reference on mongo
       console.log('going to save a new file');
@@ -51,12 +51,10 @@ module.exports = function(router, s3Manager){
       return s3Manager.saveContent(fileToChange._id, request.body.content); 
     })
     .then((updatedS3Url) => { //update the file reference in mongo with the url
-      console.log('going to update the mongo file with the s3 url');
-      return File.findOneAndUpdate({_id: fileToChange._id}, {$set: {s3Url: updatedS3Url}}).exec();
-    })
-    .then((updatedDBFile) => {
-      console.log('going to update the user file with the new file id');
-      User.findOneAndUpdate({_id: thatUserId}, {$push: {files: fileToChange._id}});
+      console.log('going to update the mongo file with the s3 url and update the user file with the new file id');
+      let userUpdatePromise = File.findOneAndUpdate({_id: fileToChange._id}, {$set: {s3Url: updatedS3Url}}).exec();
+      let fileUpdatePromise = User.findOneAndUpdate({_id: thatUserId}, {$push: {files: fileToChange._id}});
+      return Promise.all([userUpdatePromise, fileUpdatePromise]);
     })
     .then(() => {
       console.log('finished updating file ' + request.params.file);
