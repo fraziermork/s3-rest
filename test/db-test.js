@@ -1,4 +1,5 @@
 'use strict';
+let superagent = require('superagent');
 var mockgoose = require('mockgoose');
 var mongoose = require('mongoose');
 mockgoose(mongoose);
@@ -131,7 +132,7 @@ describe('/users', () => {
       var newFileId, fileOwnerName;
       it('should let you post a file to a user', (done) => {
         request('localhost:3000').post('/users/penny/files').send({
-          filename: 'Gettysburg address',
+          filename: 'GettysburgAddress',
           content: 'Four score and seven years ago...'
         }).end((err, response) => {
           expect(err).to.equal(null);
@@ -140,7 +141,7 @@ describe('/users', () => {
         });
       });
       it('should have saved a new file', (done) => {
-        File.findOne({filename: 'Gettysburg address'}, (err, searchedFile) => {
+        File.findOne({filename: 'GettysburgAddress'}, (err, searchedFile) => {
           expect(err).to.equal(null);
           expect(searchedFile.s3Url.length).to.be.gt(0);
           expect(searchedFile.owner.length).to.be.gt(0);
@@ -165,25 +166,46 @@ describe('/users', () => {
           expect(response.status).to.equal(200);
           console.log('response.body is');
           console.dir(response.body);
-          // expect(response.body)
+          expect(response.body.length).to.be.gt(0);
           done();
         });
       });
     });
   });
-//   
-//   describe('/users/:user/files/:file', () => {
-//     describe('GET to /users/:user/files/:file', () => {
-//       
-//     });
-//     describe('PUT to /users/:user/files/:file', () => {
-//       
-//     });
-//     describe('DELETE to /users/:user/files/:file', () => {
-//       
-//     });
-//   });
-// });
+  
+  describe('/users/:user/files/:file', () => {
+    before((done) => {
+      superagent.post('https://localhost:3000/users/penny/files')
+      .set('Content-Type', 'application/json')
+      .send({
+        filename: 'GettysburgAddress',
+        content: 'Four score and seven years ago...'
+      }).end((err, response) => {
+        if(err){
+          console.log('Error posting file: ', err);
+        }
+        done();
+      });
+    });
+    describe('GET to /users/:user/files/:file', () => {
+      it('should let you see a file owned by a particular user', (done) => {
+        request('localhost:3000').get('/users/penny/files/GettysburgAddress').end((err, response) => {
+          expect(err).to.equal(null);
+          expect(response.status).to.equal(200);
+          expect(response.body)
+          done();
+        });
+      });
+      
+    });
+    describe('PUT to /users/:user/files/:file', () => {
+      
+    });
+    describe('DELETE to /users/:user/files/:file', () => {
+      
+    });
+  });
+});
 // 
 // describe('/files', () => {
 //   describe('GET to /files/:file', () => {
@@ -195,5 +217,4 @@ describe('/users', () => {
 //   describe('DELETE to /files/:file', () => {
 //     
 //   });
-  
-});
+// });
