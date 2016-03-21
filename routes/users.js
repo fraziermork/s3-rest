@@ -133,7 +133,7 @@ module.exports = function(router, s3Manager){
       console.log('Request had a filename and content');
       console.log('going to save the file to mongo');
       let newFile = new File({
-        owner: [request.params.user],
+        owner: request.params.user,
         filename: request.body.filename
       });
       newFile.save()
@@ -186,12 +186,11 @@ module.exports = function(router, s3Manager){
     User.findOne({username: request.params.user})
     .populate('files').exec()
     .then((thatUser) => {//delete reference to file from user
-      
       thatUserId = thatUser._id;
       fileToChange = thatUser.files.filter((current) => {
         return current.filename === request.params.file;
       })[0];
-      console.log('Going to delete reference to file from user');
+      console.log('Going to delete reference to file from user and delete file from S3');
       let userUpdatePromise = User.findOneAndUpdate({_id: thatUserId}, {$pull: {files: fileToChange._id }}).exec();
       let fileUpdatePromise = s3Manager.deleteFilesFromArray([fileToChange._id]); 
       return Promise.all([userUpdatePromise, fileUpdatePromise]);
@@ -199,7 +198,7 @@ module.exports = function(router, s3Manager){
     .then((data) => { //create a new file reference on mongo
       console.log('going to save a new file');
       let newFile = new File({
-        owner: [request.params.user],
+        owner: request.params.user,
         filename: request.params.file
       });
       return newFile.save().exec();  
