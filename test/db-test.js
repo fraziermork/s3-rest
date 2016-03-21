@@ -1,7 +1,8 @@
 'use strict';
-var mongoose = require('mongoose');
+
 let User = require(__dirname + '/../models/users.js');
 let DBFile = require(__dirname + '/../models/files.js');
+let s3Manager = require(__dirname + '/../lib/aws/s3-manager.js');
 
 var chai = require('chai');
 var chaiHttp = require('chai-http');
@@ -12,26 +13,32 @@ var request = chai.request;
 require(__dirname + '/../server.js');
 
 describe('/users', () => {
-  before((done) => {
-    let fdr = new User({
-      username: 'dime',
-      password: 'letsMakeANewDeal'
-    });
-    let washington = new User({
-      username: 'quarter',
-      password: 'myTeethHurt'
-    });
-    let abe = new User({
-      username: 'penny',
-      password: 'honestAbe'
-    });
-    Promise.all([fdr.save(), washington.save(), abe.save()])
-    // fdr.save().then(() => {
-    //   return washington.save();
-    // }).then(() => {
-    //   return abe.save();
-    // })
-    .then(done)
+  beforeEach((done) => {
+    setTimeout(done, 5000);
+    User.find().remove().exec()
+    .then(() => { //neglecting err, data inputs  
+      console.log('finished removing all users');
+      let washington = new User({
+        username: 'quarter',
+        password: 'myTeethHurt'
+      });
+      let fdr = new User({
+        username: 'dime',
+        password: 'letsMakeANewDeal'
+      });
+      let abe = new User({
+        username: 'penny',
+        password: 'honestAbe'
+      });
+      return Promise.all([fdr.save(), washington.save(), abe.save()]);  //save the three new users
+    }).then(() => {
+      console.log('finished saving the three users');
+      return s3Manager.deleteAllFromBucket(); //delete everything from S3
+    })
+    .then(() => {
+      console.log('finished deleting everything from the bucket');
+      done();
+    })
     .catch((err) => {
       console.log('Error saving users: ', err);
     });
@@ -65,6 +72,7 @@ describe('/users', () => {
         });
       });
       it('should have saved a new user', (done) => {
+        console.log('should have saved a new user to the DB');
         User.findOne({username: 'nickel'}, (err, user) => {
           expect(err).to.equal(null);
           expect(user.password).to.equal('lifeLibertyHappiness');
@@ -275,7 +283,7 @@ describe('/users', () => {
 //         username: 'penny',
 //         password: 'honestAbe'
 //       });
-//       Promise.all([fdr.save.exec(), washington.save.exec(), abe.save.exec()])
+//       Promise.all([fdr.save(), washington.save(), abe.save()])
 //       .then(() => {
 //         done();
 //       })

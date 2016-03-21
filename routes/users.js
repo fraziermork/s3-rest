@@ -1,15 +1,15 @@
 'use strict';
+let DBFile = require(__dirname + '/../models/files.js');
+let User = require(__dirname + '/../models/users.js');
 
 module.exports = function(router, s3Manager){
-  let DBFile = require(__dirname + '/../models/files.js');
-  let User = require(__dirname + '/../models/users.js');
   
   router.route('/')
   .get((request, response) => {
     console.log('GET request made to /users');
     User.find({}).select('username accountCreationDate').exec()
     .then((users) => {
-      console.log('finished finder users');
+      console.log('finished finding users');
       response.status(200).json(users);
     })
     .catch((err) => {
@@ -24,7 +24,7 @@ module.exports = function(router, s3Manager){
         username: request.body.username,
         password: request.body.password
       });
-      newUser.save().exec()
+      newUser.save()
       .then((newDBUser) => {
         console.log('finished posting a new user');
         response.status(200).end(newDBUser.name + ' successfully created.');
@@ -201,7 +201,7 @@ module.exports = function(router, s3Manager){
   //       owner: request.params.user,
   //       filename: request.params.file
   //     });
-  //     return newFile.save().exec();  
+  //     return newFile.save(); 
   //   })
   //   .then((savedDBFile) => { //upload the new file to S3
   //     console.log('going to save the new content to S3');
