@@ -3,48 +3,55 @@
 let User = require(__dirname + '/../models/users.js');
 let DBFile = require(__dirname + '/../models/files.js');
 let s3Manager = require(__dirname + '/../lib/aws/s3-manager.js');
-
+var mongoose = require('mongoose');
 var chai = require('chai');
 var chaiHttp = require('chai-http');
 chai.use(chaiHttp);
 var expect = chai.expect;
 var request = chai.request;
 
+// process.env.MONGOLAB_URI = 'mongodb://localhost/testdb';
 require(__dirname + '/../server.js');
 
-describe('/users', () => {
-  beforeEach((done) => {
-    setTimeout(done, 5000);
-    User.find().remove().exec()
-    .then(() => { //neglecting err, data inputs  
-      console.log('finished removing all users');
-      let washington = new User({
-        username: 'quarter',
-        password: 'myTeethHurt'
-      });
-      let fdr = new User({
-        username: 'dime',
-        password: 'letsMakeANewDeal'
-      });
-      let abe = new User({
-        username: 'penny',
-        password: 'honestAbe'
-      });
-      return Promise.all([fdr.save(), washington.save(), abe.save()]);  //save the three new users
-    }).then(() => {
-      console.log('finished saving the three users');
-      return s3Manager.deleteAllFromBucket(); //delete everything from S3
-    })
-    .then(() => {
-      console.log('finished deleting everything from the bucket');
-      done();
-    })
-    .catch((err) => {
-      console.log('Error saving users: ', err);
+function clearAllAndRepopulate(done){
+  // setTimeout(done, 5000);
+  User.find().remove().exec()
+  .then(() => { //neglecting err, data inputs  
+    // console.log('finished removing all users');
+    let washington = new User({
+      username: 'quarter',
+      password: 'myTeethHurt'
     });
+    let fdr = new User({
+      username: 'dime',
+      password: 'letsMakeANewDeal'
+    });
+    let abe = new User({
+      username: 'penny',
+      password: 'honestAbe'
+    });
+    return Promise.all([fdr.save(), washington.save(), abe.save()]);  //save the three new users
+  }).then(() => {
+    // console.log('finished saving the three users');
+    return s3Manager.deleteAllFromBucket(); //delete everything from S3
+  })
+  .then(() => {
+    console.log('Finished before block');
+    done();
+  })
+  .catch((err) => {
+    console.log('Error saving users: ', err);
+    done();
   });
-  
+}
+
+
+describe('/users', () => {
   describe('/', () => {
+    before(clearAllAndRepopulate);
+    // after(() => {
+    //   mongoose.connection.testdb.dropDatabase();
+    // });
     describe('GET to /users', () => {
       it('should let you see all users', (done) => {
         console.log('going to try to get all users');
@@ -58,7 +65,7 @@ describe('/users', () => {
     });
     describe('POST to /users', () => {
       it('should let you post a new user', (done) => {
-        console.log('going to try to post a new user');
+        // console.log('going to try to post a new user');
         request('localhost:3000').post('/users').send({
           username: 'nickel',
           password: 'lifeLibertyHappiness'
@@ -72,7 +79,7 @@ describe('/users', () => {
         });
       });
       it('should have saved a new user', (done) => {
-        console.log('should have saved a new user to the DB');
+        // console.log('should have saved a new user to the DB');
         User.findOne({username: 'nickel'}, (err, user) => {
           expect(err).to.equal(null);
           expect(user.password).to.equal('lifeLibertyHappiness');
@@ -82,92 +89,97 @@ describe('/users', () => {
     });
   });
   
-  // describe('/users/:user', () => {
-  //   describe('GET to /users/:user', () => {
-  //     it('should let you request a particular user', (done) => {
-  //       request('localhost:3000').get('/users/dime').end((err, response) => {
-  //         expect(err).to.equal(null);
-  //         expect(response.status).to.equal(200);
-  //         expect(response.body.username).to.equal('penny');
-  //         expect(response.body.password).to.equal('honestAbe');
-  //         expect(response.body.accountCreationDate instanceof Date).to.equal(true);
-  //         done();
-  //       });
-  //     });
-  //   });
-  //   describe('PUT to /users/:user', () => {
-  //     it('should let you make changes to a user', (done) => {
-  //       request('localhost:3000').put('/users/quarter').send({
-  //         username: 'dollaBill',
-  //         password: 'cherryTree'
-  //       }).end((err, response) => {
-  //         expect(err).to.equal(null);
-  //         expect(response.status).to.equal(200);
-  //         console.log('response.body is');
-  //         console.dir(response.body);
-  //         // expect(response.body.username)
-  //         done();
-  //       });
-  //     });
-  //     it('should have successfully updated a user', (done) => {
-  //       User.findOne({username: 'dollaBill'}, (err, user) => {
-  //         expect(err).to.equal(null);
-  //         expect(user.password).to.equal('cherryTree');
-  //         done();
-  //       });
-  //     });
-  //   });
-  //   describe('DELETE to /users/:user', () => {
-  //     it('should let you delete a user', (done) => {
-  //       request('localhost:3000').delete('/users/penny').end((err, response) => {
-  //         expect(err).to.equal(null);
-  //         expect(response.status).to.equal(200);
-  //         done();
-  //       });
-  //     });
-  //     it('should have deleted that user', (done) => {
-  //       User.find({username: 'dollaBill'}, (err, user) => {
-  //         expect(err).to.equal(null);
-  //         expect(user.length).to.equal(0);
-  //         done();
-  //       });
-  //     });
-  //   });
-  // });
+  describe('/users/:user', () => {
+    before(clearAllAndRepopulate);
+    describe('GET to /users/:user', () => {
+      it('should let you request a particular user', (done) => {
+        request('localhost:3000').get('/users/penny').end((err, response) => {
+          expect(err).to.equal(null);
+          expect(response.status).to.equal(200);
+          console.log('response.body is');
+          console.dir(response.body);
+          expect(response.body[0].username).to.equal('penny');
+          expect(response.body[0].password).to.equal('honestAbe');
+          done();
+        });
+      });
+    });
+    describe('PUT to /users/:user', () => {
+      it('should let you make changes to a user', (done) => {
+        request('localhost:3000').put('/users/quarter').send({
+          newUsername: 'dollaBill',
+          newPassword: 'cherryTree'
+        }).end((err, response) => {
+          expect(err).to.equal(null);
+          expect(response.status).to.equal(200);
+          console.log('response.body is');
+          console.dir(response.body);
+          // expect(response.body.username)
+          done();
+        });
+      });
+      it('should have successfully updated a user', (done) => {
+        User.findOne({username: 'dollaBill'}, (err, user) => {
+          console.log('user is');
+          console.dir(user);
+          expect(err).to.equal(null);
+          expect(user.password).to.equal('cherryTree');
+          done();
+        });
+      });
+    });
+    describe('DELETE to /users/:user', () => {
+      it('should let you delete a user', (done) => {
+        request('localhost:3000').delete('/users/penny').end((err, response) => {
+          expect(err).to.equal(null);
+          expect(response.status).to.equal(200);
+          done();
+        });
+      });
+      it('should have deleted that user', (done) => {
+        User.find({username: 'penny'}, (err, user) => {
+          expect(err).to.equal(null);
+          expect(user.length).to.equal(0);
+          done();
+        });
+      });
+    });
+  });
   
-  // describe('/users/:user/files', () => {
-  //   describe('POST to /users/:user/files', () => {
-  //     var newFileId, fileOwnerName;
-  //     it('should let you post a file to a user', (done) => {
-  //       request('localhost:3000').post('/users/penny/files').send({
-  //         filename: 'GettysburgAddress',
-  //         content: 'Four score and seven years ago...'
-  //       }).end((err, response) => {
-  //         expect(err).to.equal(null);
-  //         expect(response.status).to.equal(200);
-  //         done();
-  //       });
-  //     });
-  //     it('should have saved a new file', (done) => {
-  //       File.findOne({filename: 'GettysburgAddress'}, (err, searchedFile) => {
-  //         expect(err).to.equal(null);
-  //         expect(searchedFile.s3Url.length).to.be.gt(0);
-  //         expect(searchedFile.owner.length).to.be.gt(0);
-  //         fileOwnerName = searchedFile.owner;
-  //         newFileId = searchedFile._id;
-  //         done();
-  //       });
-  //     });
-  //     it('should have updated the files entry of the owner', (done) => {
-  //       User.findOne({username: fileOwnerName})
-  //       .populate('files').exec((err, fileOwner) => {
-  //         expect(err).to.equal(null);
-  //         expect(fileOwner.files.length).to.be.gt(0);
-  //         expect(fileOwner.files[0]._id).to.equal(newFileId);
-  //         done();
-  //       });
-  //     });
-  //   });
+  describe('/users/:user/files', () => {
+    before(clearAllAndRepopulate);
+    describe('POST to /users/:user/files', () => {
+      var newFileId, fileOwnerName;
+      it('should let you post a file to a user', (done) => {
+        request('localhost:3000').post('/users/penny/files').send({
+          filename: 'GettysburgAddress',
+          content: 'Four score and seven years ago...'
+        }).end((err, response) => {
+          expect(err).to.equal(null);
+          expect(response.status).to.equal(200);
+          done();
+        });
+      });
+      it('should have saved a new file', (done) => {
+        File.findOne({filename: 'GettysburgAddress'}, (err, searchedFile) => {
+          expect(err).to.equal(null);
+          expect(searchedFile.s3Url.length).to.be.gt(0);
+          expect(searchedFile.owner.length).to.be.gt(0);
+          fileOwnerName = searchedFile.owner;
+          newFileId = searchedFile._id;
+          done();
+        });
+      });
+      it('should have updated the files entry of the owner', (done) => {
+        User.findOne({username: fileOwnerName})
+        .populate('files').exec((err, fileOwner) => {
+          expect(err).to.equal(null);
+          expect(fileOwner.files.length).to.be.gt(0);
+          expect(fileOwner.files[0]._id).to.equal(newFileId);
+          done();
+        });
+      });
+    });
   //   describe('GET to /users/:user/files', () => {
   //     it('should populate correctly and let you grab the files belonging to a user', (done) => {
   //       request('localhost:3000').get('/users/penny/files').end((err, response) => {
@@ -180,7 +192,7 @@ describe('/users', () => {
   //       });
   //     });
   //   });
-  // });
+  });
   
 //   describe('/users/:user/files/:file', () => {
 //     var oldDBFile;

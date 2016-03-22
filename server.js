@@ -4,9 +4,8 @@ let bodyParser = require('body-parser');
 let s3Manager = require(__dirname + '/lib/aws/s3-manager.js');
 let express = require('express');
 let app = express();
-var router = express.Router();
-let filesRouter = require(__dirname + '/routes/files.js')(router, s3Manager);
-let usersRouter = require(__dirname + '/routes/users.js')(router, s3Manager);
+let filesRouter = require(__dirname + '/routes/files.js')(express.Router(), s3Manager);
+let usersRouter = require(__dirname + '/routes/users.js')(express.Router(), s3Manager);
 
 
 console.log('Going to try to start a mongo connection.');
