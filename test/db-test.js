@@ -14,35 +14,35 @@ require(__dirname + '/../server.js');
 
 function clearAllAndRepopulate(done){
   dbUser.find().remove().exec()
-  .then(() => {
-    return dbFile.find().remove().exec();
-  })
-  .then(() => { //neglecting err, data inputs  
-    let washington = new dbUser({
-      username: 'quarter',
-      password: 'myTeethHurt'
+    .then(() => {
+      return dbFile.find().remove().exec();
+    })
+    .then(() => { //neglecting err, data inputs  
+      let washington = new dbUser({
+        username: 'quarter',
+        password: 'myTeethHurt'
+      });
+      let fdr = new dbUser({
+        username: 'dime',
+        password: 'letsMakeANewDeal'
+      });
+      let abe = new dbUser({
+        username: 'penny',
+        password: 'honestAbe'
+      });
+      return Promise.all([fdr.save(), washington.save(), abe.save()]); //save the three new users
+    })
+    .then(() => { //if there are internet problems, this will break all tests
+      return s3Manager.deleteAllFromBucket(); //delete everything from S3
+    })
+    .then(() => {
+      console.log('Finished before block');
+      done();
+    })
+    .catch((err) => {
+      console.log('Error saving users: ', err);
+      done();
     });
-    let fdr = new dbUser({
-      username: 'dime',
-      password: 'letsMakeANewDeal'
-    });
-    let abe = new dbUser({
-      username: 'penny',
-      password: 'honestAbe'
-    });
-    return Promise.all([fdr.save(), washington.save(), abe.save()]); //save the three new users
-  })
-  .then(() => { //if there are internet problems, this will break all tests
-    return s3Manager.deleteAllFromBucket(); //delete everything from S3
-  })
-  .then(() => {
-    console.log('Finished before block');
-    done();
-  })
-  .catch((err) => {
-    console.log('Error saving users: ', err);
-    done();
-  });
 }
 
 describe('/users', ()=>{
@@ -251,20 +251,20 @@ describe('/users', ()=>{
       });
       it('should have posted that file to S3', (done) => {
         s3Manager.findAllInBucket()
-        .then((bucketContents) => {
-          let savedFile = bucketContents.contents
-          .filter((current) => {
-            return current.Key === newFileId;
-          })[0];
-          // console.log('savedFile to s3 is');
-          // console.dir(savedFile);
-          expect(savedFile.length).to.equal(1);
-          done();
-        })
-        .catch((err) => {
-          new Error(err);
-          done();
-        });
+          .then((bucketContents) => {
+            let savedFile = bucketContents.contents
+            .filter((current) => {
+              return current.Key === newFileId;
+            })[0];
+            // console.log('savedFile to s3 is');
+            // console.dir(savedFile);
+            expect(savedFile.length).to.equal(1);
+            done();
+          })
+          .catch((err) => {
+            new Error(err);
+            done();
+          });
       });
       
     });
