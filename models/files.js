@@ -8,4 +8,4 @@ let fileschema = new mongoose.Schema({
   modifiedDate: {type: Date, default: Date.now}
 });
 
-module.exports = mongoose.model('File', fileschema);
+module.exports = mongoose.model('dbFile', fileschema);
