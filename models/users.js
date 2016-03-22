@@ -8,4 +8,4 @@ let userschema = new mongoose.Schema({
   accountCreationDate: {type: Date, default: Date.now}
 });
   
-module.exports = mongoose.model('Users', userschema);
+module.exports = mongoose.model('User', userschema);

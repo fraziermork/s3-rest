@@ -142,7 +142,18 @@ module.exports = function(router, s3Manager){
       .then((savedDBFile) => {
         console.log('going to save the file to S3');
         fileDBId = savedDBFile._id;
-        return s3Manager.saveContent(savedDBFile._id, request.body.content);
+        // console.log('fileDBId is ');
+        // console.log(fileDBId);
+        // console.dir(fileDBId);
+        // console.log(fileDBId.id);
+        // console.log(fileDBId.id.toString());
+        // console.log(typeof(fileDBId));
+        // console.log('fileDBId toString is ');
+        // console.log(fileDBId.toString());
+        // console.log(typeof fileDBId.toString());
+        // console.dir(fileDBId.toString());
+        // console.dir('Hello World');
+        return s3Manager.saveContent(fileDBId.toString(), request.body.content);
       })
       .then((generatedS3Url) => {
         console.log('going to update the user and file with the s3url and the fileid');
